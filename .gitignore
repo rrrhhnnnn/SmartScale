@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+smartscale.db
+config.json
+*.csv

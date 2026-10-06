@@ -1,0 +1,3 @@
+# Only needed to talk to a real Arduino over USB.
+# SIMULATOR mode runs on a bare Python install with no packages at all.
+pyserial>=3.5

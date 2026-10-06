@@ -1,0 +1,17 @@
+[
+  {
+    "name": "plate",
+    "weight_g": 60.1,
+    "tolerance_g": 4.0
+  },
+  {
+    "name": "Phone",
+    "weight_g": 227.0,
+    "tolerance_g": 4.54
+  },
+  {
+    "name": "Gear",
+    "weight_g": 264.0,
+    "tolerance_g": 25.0
+  }
+]

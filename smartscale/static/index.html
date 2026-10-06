@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smart Scale</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 20h16"/><path d="M6 20V9l6-5 6 5v11"/><path d="M9 20v-6h6v6"/>
+    </svg>
+    <div>
+      <div class="brand-name">Smart Scale</div>
+      <div class="brand-sub">IoT item-recognition weighing system</div>
+    </div>
+  </div>
+
+  <div class="lamp" id="lamp" data-state="OFFLINE"><span class="dot"></span><span id="lampText">OFFLINE</span></div>
+
+  <div class="conn">
+    <select id="source" title="Source"></select>
+    <button class="btn primary" id="btnConnect">Connect</button>
+  </div>
+
+  <div class="actions">
+    <button class="btn" id="btnTare" title="Zero the scale and reset the basket">Tare</button>
+    <button class="btn" id="btnUndo" title="Revert the last recognised event">Undo</button>
+    <button class="btn" id="btnCalibrate">Calibrate</button>
+    <button class="btn ghost" id="btnNewSession">New session</button>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="card weight-card">
+      <div class="card-label">Live weight</div>
+      <div class="weight"><span id="kg" class="mono">0.000</span><span class="unit">kg</span></div>
+      <div class="weight-sub"><span id="grams" class="mono">0.0 g</span><span class="sep">·</span><span id="sourceLabel">not connected</span></div>
+      <canvas id="chart" height="110"></canvas>
+      <div class="chart-legend"><span><i class="sw stable"></i>stable</span><span><i class="sw moving"></i>moving</span><span class="right">last 60 s</span></div>
+    </div>
+
+    <div class="card metric accent-cyan">
+      <div class="card-label">Quantity</div>
+      <div class="big mono" id="qty">0</div>
+      <div class="metric-sub">total items on the platform</div>
+    </div>
+
+    <div class="card metric accent-indigo">
+      <div class="card-label">Different items</div>
+      <div class="big mono" id="distinct">0</div>
+      <div class="metric-sub">distinct item types recognised</div>
+    </div>
+  </section>
+
+  <section class="grid2">
+    <div class="card basket-card">
+      <div class="card-head">
+        <h2>On the platform</h2>
+        <button class="btn small" id="btnTeach">+ Teach item</button>
+      </div>
+      <ul id="basket" class="basket"></ul>
+      <div class="recon" id="recon"><span class="muted">Platform is empty — place an item to begin.</span></div>
+    </div>
+
+    <div class="card tabs-card">
+      <div class="tabs">
+        <button class="tab active" data-tab="history">History</button>
+        <button class="tab" data-tab="library">Item library</button>
+        <button class="tab" data-tab="sim">Simulator</button>
+        <button class="tab" data-tab="settings">Settings</button>
+        <a class="btn primary small tabs-cta" id="btnExport" href="/api/export.csv" download>
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+          Download CSV
+        </a>
+      </div>
+
+      <div class="panel" id="tab-history">
+        <div class="table-wrap">
+          <table class="table" id="historyTable">
+            <thead><tr><th>Time</th><th>Event</th><th>Item</th><th class="num">×</th><th class="num">Δ g</th><th class="num">Total g</th><th class="num">Qty</th><th class="num">Items</th><th>Status</th></tr></thead>
+            <tbody id="historyBody"></tbody>
+          </table>
+          <div class="empty" id="historyEmpty">No measurements yet.</div>
+        </div>
+      </div>
+
+      <div class="panel hidden" id="tab-library">
+        <div class="panel-head">
+          <p class="muted">Items are recognised by weight. Overlapping ranges are highlighted — those pairs can never be told apart.</p>
+          <button class="btn small" id="btnAddItem">+ Add item</button>
+        </div>
+        <div class="table-wrap">
+          <table class="table" id="libraryTable">
+            <thead><tr><th>Name</th><th class="num">Weight g</th><th class="num">± g</th><th>Accepted range</th><th></th></tr></thead>
+            <tbody id="libraryBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel hidden" id="tab-sim">
+        <p class="muted">Virtual platform — works with no hardware. Connect with source <b>SIMULATOR</b>, then place items one at a time exactly as a real operator would.</p>
+        <div class="sim-row">
+          <label>Library item</label>
+          <select id="simItem"></select>
+          <button class="btn small" id="simPlace">Place</button>
+          <button class="btn small ghost" id="simRemove">Remove</button>
+        </div>
+        <div class="sim-row">
+          <label>Custom weight</label>
+          <div class="input-unit"><input id="simGrams" type="number" value="120" step="0.1"><span>g</span></div>
+          <button class="btn small" id="simPlaceCustom">Place</button>
+          <button class="btn small ghost" id="simLiftCustom">Lift</button>
+          <button class="btn small danger" id="simClear">Clear platform</button>
+        </div>
+      </div>
+
+      <div class="panel hidden" id="tab-settings">
+        <form id="settingsForm" class="settings"></form>
+        <div class="panel-foot">
+          <button class="btn primary small" id="btnSaveSettings">Save settings</button>
+          <span class="muted">Changes apply immediately, no restart.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="statusbar"><span id="statusText">Ready.</span><span class="right mono" id="sessionText"></span></div>
+<div id="toasts"></div>
+
+<!-- Item add / edit -->
+<dialog id="dlgItem">
+  <form class="dlg" id="formItem">
+    <h3 id="dlgItemTitle">Add item</h3>
+    <label>Name<input id="itemName" required autocomplete="off"></label>
+    <div class="row2">
+      <label>Weight<div class="input-unit"><input id="itemWeight" type="number" step="0.1" min="0.1" required><span>g</span></div></label>
+      <label>Tolerance<div class="input-unit"><input id="itemTol" type="number" step="0.1" min="0.1" required><span>± g</span></div></label>
+    </div>
+    <p class="hint">Tolerance must absorb sensor noise but stay narrow enough not to collide with another item.</p>
+    <div class="dlg-actions"><button type="button" class="btn ghost" data-close="dlgItem">Cancel</button><button type="submit" class="btn primary" id="itemSave">Save</button></div>
+  </form>
+</dialog>
+
+<!-- Teach unknown -->
+<dialog id="dlgTeach">
+  <form class="dlg" id="formTeach">
+    <h3>Unknown item</h3>
+    <p>An unrecognised weight of <b class="mono" id="teachWeight">0.0 g</b> was placed. Give it a name to add it to the library and the basket.</p>
+    <label>Name<input id="teachName" required autocomplete="off" placeholder="e.g. Stapler"></label>
+    <div class="dlg-actions"><button type="button" class="btn ghost" id="teachSkip">Ignore</button><button type="submit" class="btn primary" id="teachSave">Add &amp; recognise</button></div>
+  </form>
+</dialog>
+
+<!-- Calibration -->
+<dialog id="dlgCal">
+  <form class="dlg" id="formCal" onsubmit="return false">
+    <h3>Calibration wizard</h3>
+    <ol class="steps">
+      <li><span>Empty the platform, then</span><button type="button" class="btn small" id="calTare">Tare</button></li>
+      <li><span>Place a known weight</span><div class="input-unit"><input id="calKnown" type="number" value="227" step="0.1" min="1"><span>g</span></div></li>
+      <li><span>Read the raw sensor value</span><button type="button" class="btn small" id="calRead">Read</button></li>
+    </ol>
+    <div class="cal-result mono" id="calResult">—</div>
+    <div class="dlg-actions"><button type="button" class="btn ghost" data-close="dlgCal">Close</button><button type="button" class="btn primary" id="calApply" disabled>Apply to device</button></div>
+  </form>
+</dialog>
+
+<!-- Overlap confirm -->
+<dialog id="dlgClash">
+  <form class="dlg" id="formClash" onsubmit="return false">
+    <h3>Overlapping weights</h3>
+    <p id="clashText"></p>
+    <p class="hint">These items can never be told apart by weight alone. Add anyway?</p>
+    <div class="dlg-actions"><button type="button" class="btn ghost" id="clashNo">Cancel</button><button type="button" class="btn danger" id="clashYes">Add anyway</button></div>
+  </form>
+</dialog>
+
+<script src="/app.js"></script>
+</body>
+</html>
