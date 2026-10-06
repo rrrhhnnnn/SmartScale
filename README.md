@@ -6,13 +6,15 @@ Item-recognition weighing system for the IoT project.
 Counts how many things are on the platform, how many *different* things they
 are, and names each one — from weight alone.
 
+Using the items in the library (plate 60 g, Phone 227 g, Gear 264 g):
+
 ```
-place pencil          → +60 g    Pencil ×1                   Qty 1 | Items 1
-place 2nd pencil      → +60 g    Pencil ×2                   Qty 2 | Items 1
-place eraser          → +18 g    Pencil ×2, Eraser ×1        Qty 3 | Items 2
-place book            → +240 g   Pencil ×2, Eraser ×1, Book  Qty 4 | Items 3
-remove 2 pencils      → −120 g   Eraser ×1, Book ×1          Qty 2 | Items 2   (bulk)
-remove the rest       → −258 g   (empty)                     Qty 0 | Items 0 → 0.000 kg
+place plate           → +60 g    plate ×1                      Qty 1 | Items 1
+place 2nd plate       → +60 g    plate ×2                      Qty 2 | Items 1
+place Phone           → +227 g   plate ×2, Phone ×1            Qty 3 | Items 2
+place Gear            → +264 g   plate ×2, Phone ×1, Gear ×1   Qty 4 | Items 3
+remove 2 plates       → −120 g   Phone ×1, Gear ×1             Qty 2 | Items 2   (bulk)
+remove the rest       → −491 g   (empty)                       Qty 0 | Items 0 → 0.000 kg
 ```
 
 ---
@@ -74,8 +76,8 @@ is done in software — and calibration is done by editing the `.ino`.
 
 A single load cell reports **one number: total weight**. A total cannot be
 uniquely decomposed into a set of items — that is the subset-sum problem, and
-it is ambiguous. If a pencil is 5 g and an eraser is 10 g, two pencils weigh
-exactly the same as one eraser.
+it is ambiguous — if two light items together weigh the same as one heavier
+item, the total alone cannot tell those two situations apart.
 
 **So this software never decomposes the total.** It watches the *change* in
 weight each time something is placed or removed, matches that delta against the
@@ -126,8 +128,8 @@ the live reading, a drifting number simply cannot move an item.
 
 **Item library** — add / edit / delete, **Teach from scale** (place it, name
 it), and a warning when two items have colliding weight windows. On a fresh
-install the library is pre-loaded (from `smartscale/seed_library.json`, also
-baked into the `.exe`).
+install the library is pre-loaded with **plate, Phone, Gear** (from
+`smartscale/seed_library.json`, which is also baked into the `.exe`).
 
 **Operations** — live reading, stability lamp, **Tare from the PC**, **Undo**
 (reverts a whole bulk removal in one click), New Session, and a reconciliation
@@ -255,11 +257,11 @@ them for reliability. Changes apply without restarting.
 ## Hardware note — read before the demo
 
 Your 10 kg load cell has a noise floor of roughly **1–2 g**. Items lighter than
-about **10 g are not reliably distinguishable** — a 5 g pencil sits barely
-above the noise, and its ±2 g window would collide with everything.
+about **10 g are not reliably distinguishable** — a ~5 g item sits barely above
+the noise, and its ±2 g window would collide with everything.
 
-- **For a reliable demo:** use items of **50 g or more** (phone, stapler,
-  notebook, mouse, bottle).
+- **For a reliable demo:** use items of **50 g or more** — your current library
+  (plate ~60 g, Phone ~227 g, Gear ~264 g) is all well clear of the noise.
 - **For small items:** fit a **1 kg load cell** — same HX711, same wiring, same
   code, far better resolution.
 
@@ -282,9 +284,10 @@ python tests/test_web.py
 python tests/test_smoke.py
 ```
 
-`test_engine.py` (22 tests) covers the brief's exact scenario (2 pencils +
-1 eraser + 1 book → Quantity 4, Items 3), the 200 → 202 g no-fluctuation
-guarantee, single + multi + **bulk removal** (2 of 3 plates, mixed, ambiguous),
+`test_engine.py` (22 tests) covers the brief's canonical scenario (three item
+types, one of them placed twice → Quantity 4, Items 3), the 200 → 202 g
+no-fluctuation guarantee, single + multi + **bulk removal** (2 of 3 plates,
+mixed, ambiguous),
 clearing, unknown/teach, undo of a bulk step, never-below-zero, the display
 zero band, re-zero when empty, and firmware auto-detection. `test_web.py`
 (15 tests) starts the real HTTP server and drives the full pipeline exactly as
@@ -329,9 +332,9 @@ cd "C:\D drive\Claude sessions\SmartScale" && python -c "import sqlite3,json; c=
 The wire format is already fixed, so the dashboard never has to change:
 
 ```json
-{ "device_id": "scale-01", "ts": "2026-09-21T14:02:31",
-  "event": "ADD", "item": "Pencil", "count": 1, "delta_g": 60.1,
-  "total_g": 482.4, "quantity": 4, "distinct_items": 3, "status": "OK" }
+{ "device_id": "scale-01", "ts": "2026-10-06T14:02:31",
+  "event": "ADD", "item": "Gear", "count": 1, "delta_g": 264.0,
+  "total_g": 611.1, "quantity": 4, "distinct_items": 3, "status": "OK" }
 ```
 
 Point `cloud_url` at any JSON endpoint (Node-RED, ThingsBoard, Firebase, a
